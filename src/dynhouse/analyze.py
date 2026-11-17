@@ -327,15 +327,42 @@ def analyse(results_dir: Path) -> dict[str, Any]:
     # ---- failure classification -------------------------------------------- #
     categories = ["acted on stale memory", "verified but the target moved again",
                   "wasted the ask", "invalid format", "budget or steps exhausted", "other"]
+    invalid_by_cell: dict[tuple[str, float, int], list[str]] = defaultdict(list)
+    traces_path = results_dir / "traces.jsonl"
+    if traces_path.exists():
+        for row in load_episodes(traces_path):
+            if row.get("failure_reason") == "invalid_action":
+                invalid_by_cell[(row["arm"], row["disturbance_p"], row["seed"])].append(row["message"])
     failures: list[tuple[dict[str, Any], str]] = []
     for r in keep:
         if r["success"]:
             continue
-        failures.append((r, classify(r)))
+        key = (r["arm"], r["disturbance_p"], r["seed"])
+        failures.append((r, classify(r, invalid_by_cell.get(key, []))))
     class_counts = Counter(label for _, label in failures)
     class_table = md_table(["category", "failed episodes"],
                             [[c, str(class_counts.get(c, 0))] for c in categories]
                             + [["**total**", f"**{len(failures)}**"]])
+
+    # Overlapping failure signatures: the primary category above assigns each
+    # episode to exactly one bucket, but these signatures overlap and together
+    # show the causal chain (a repeat ask wastes a step, wasted steps run the
+    # budget down).
+    signatures = {
+        "a grasp missed (stale pick)": lambda r, inv: r.get("stale_pick_count", 0) > 0,
+        "asked again after the one allowed ask": lambda r, inv: any("ask limit" in m for m in inv),
+        "ran out of budget": lambda r, inv: r.get("failure_reason") == "budget_exhausted",
+        "ran out of steps": lambda r, inv: r.get("failure_reason") == "max_steps",
+        "ended in a safety violation": lambda r, inv: r.get("safety_count", 0) > 0,
+        "never used the ask": lambda r, inv: r.get("ask_count", 0) == 0,
+        "used the ask": lambda r, inv: r.get("ask_count", 0) >= 1,
+    }
+    sig_rows = []
+    for label, test in signatures.items():
+        count = sum(1 for r, _ in failures
+                    if test(r, invalid_by_cell.get((r["arm"], r["disturbance_p"], r["seed"]), [])))
+        sig_rows.append([label, str(count), f"{100 * count / max(len(failures), 1):.1f}%"])
+    sig_table = md_table(["signature (categories overlap)", "failed episodes", "share"], sig_rows)
     by_arm_rows = []
     for arm in ARMS:
         cell = [(r, lab) for r, lab in failures if r["arm"] == arm]
@@ -358,7 +385,8 @@ def analyse(results_dir: Path) -> dict[str, Any]:
         script_table + "\n\n### same seeds, paired with the LLM arms\n\n" + script_table
         + "\n", encoding="utf-8")
     (TABLES / "failure_classification.md").write_text(
-        class_table + "\n\n" + class_by_arm + "\n\n### first 40 failed episodes\n\n"
+        class_table + "\n\n" + class_by_arm + "\n\n### failure signatures (overlapping)\n\n"
+        + sig_table + "\n\n### first 40 failed episodes\n\n"
         + class_samples + "\n", encoding="utf-8")
     (TABLES / "cost_dominance.md").write_text(dominance_table + "\n", encoding="utf-8")
     (TABLES / "run_overview.md").write_text(
@@ -387,19 +415,31 @@ def analyse(results_dir: Path) -> dict[str, Any]:
             "class_counts": class_counts}
 
 
-def classify(r: dict[str, Any]) -> str:
-    """One label per failed episode, in preregistered order of specificity."""
+def classify(r: dict[str, Any], invalid_messages: list[str] | None = None) -> str:
+    """One label per failed episode, in preregistered order of specificity.
+
+    * a grasp that missed although the item had just been seen -> the roommate
+      moved it in between (the "verified but moved" race);
+    * a grasp that missed on older evidence -> the agent acted on stale memory;
+    * unparsable replies or repeated illegal actions -> format problems;
+    * an ask attempted after the one allowed ask was spent -> the ask was
+      wasted (the environment rejects it, wasting a step);
+    * the episode ran out of budget or steps.
+    """
+    invalid_messages = invalid_messages or []
     picks = r.get("pick_records", [])
     failed_picks = [p for p in picks if not p["ok"]]
     if failed_picks:
-        fresh = [p for p in failed_picks if (p.get("evidence_age") or 99) <= 1]
-        if fresh:
+        ages = [p.get("evidence_age") for p in failed_picks if p.get("evidence_age") is not None]
+        if ages and min(ages) <= 1:
             return "verified but the target moved again"
         return "acted on stale memory"
     usage = r.get("usage", {})
-    if usage.get("format_failures", 0) > 0 or r.get("invalid_actions", 0) >= 3:
+    ask_limit = [m for m in invalid_messages if "ask limit" in m]
+    other_invalid = [m for m in invalid_messages if "ask limit" not in m]
+    if usage.get("format_failures", 0) > 0 or len(other_invalid) >= 3:
         return "invalid format"
-    if r.get("ask_count", 0) >= 1:
+    if ask_limit:
         return "wasted the ask"
     if r.get("failure_reason") in ("budget_exhausted", "max_steps"):
         return "budget or steps exhausted"

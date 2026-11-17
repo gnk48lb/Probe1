@@ -190,19 +190,16 @@ def main() -> None:
         # continued by the full run, and a retry may use a different timeout.
         # Everything else (model, arms, p levels, env, variant) must match
         # exactly, or the output directory mixes two experiments.
-        for key in ("run_id", "created_at", "concurrency", "timeout_s", "max_tokens",
-                    "request_retries", "format_retries", "seeds", "seed_start", "seed_range"):
-            previous.pop(key, None)
-            config.pop(key, None)
-        if previous != config:
+        ignore = ("run_id", "created_at", "concurrency", "timeout_s", "max_tokens",
+                  "request_retries", "format_retries", "seeds", "seed_start", "seed_range")
+        previous_cmp = {k: v for k, v in previous.items() if k not in ignore}
+        config_cmp = {k: v for k, v in config.items() if k not in ignore}
+        if previous_cmp != config_cmp:
             raise SystemExit(f"Output manifest differs from {manifest_path}; use a new output "
-                             f"directory.\n  previous: {previous}\n  requested: {config}")
-        original = json.loads(manifest_path.read_text(encoding="utf-8"))
-        config["run_id"] = original["run_id"]
-        config["created_at"] = original["created_at"]
-        manifest_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
-    else:
-        manifest_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+                             f"directory.\n  previous: {previous_cmp}\n  requested: {config_cmp}")
+        config["run_id"] = previous["run_id"]
+        config["created_at"] = previous["created_at"]
+    manifest_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
 
     done_keys = {(r["arm"], r["disturbance_p"], r["seed"]) for r in load_jsonl(episodes_path)}
     jobs = []
