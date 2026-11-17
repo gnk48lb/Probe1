@@ -50,32 +50,51 @@ def load_episodes(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def usable(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def usable(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[int], int]:
     """Split out the episodes that may enter the analysis.
 
-    An episode is usable when it finished (no infrastructure failure).  Seeds
-    are kept only when all four core arms are complete at all three p, so
-    every comparison is paired.
+    The newest row of a cell wins: a repaired episode supersedes the
+    infrastructure failure it replaced.  An episode is usable when it finished
+    (no infrastructure failure).  A seed enters the analysis only when every
+    arm is complete at every p, so every comparison -- including the
+    descriptive window-arm one -- is paired over exactly the same seed list.
+    (The preregistration demands this for the four core arms; in the final
+    data, where every cell of every seed is present, the two conditions
+    coincide exactly.)
     """
-    good = [r for r in rows if not r.get("infra_failed")
+    latest: dict[tuple[str, float, int], dict[str, Any]] = {}
+    for row in rows:
+        latest[(row["arm"], row["disturbance_p"], row["seed"])] = row
+    values = list(latest.values())
+    infra_events = sum(1 for r in rows if r.get("infra_failed")
+                       or r.get("failure_reason") == "infrastructure_failure")
+    good = [r for r in values if not r.get("infra_failed")
             and r.get("failure_reason") != "infrastructure_failure"
             and r.get("success") is not None]
+    keys = {(r["arm"], r["disturbance_p"], r["seed"]) for r in good}
     core_keys = {(r["arm"], r["disturbance_p"], r["seed"]) for r in good if r["arm"] in CORE}
     seeds = sorted({r["seed"] for r in good})
-    complete = []
-    for seed in seeds:
-        if all((arm, p, seed) in core_keys for arm in CORE for p in PS):
-            complete.append(seed)
+    complete = [seed for seed in seeds
+                if all((arm, p, seed) in keys for arm in ARMS for p in PS)]
+    core_complete = [seed for seed in seeds
+                     if all((arm, p, seed) in core_keys for arm in CORE for p in PS)]
     keep = [r for r in good if r["seed"] in set(complete)]
-    dropped = [r for r in rows if r.get("infra_failed")
+    dropped = [r for r in values if r.get("infra_failed")
                or r.get("failure_reason") == "infrastructure_failure"]
-    return keep, dropped
+    return keep, dropped, core_complete, infra_events
 
 
 # --------------------------------------------------------------------------- #
 # statistics
 # --------------------------------------------------------------------------- #
 class Bootstrap:
+    """Paired bootstrap over seeds.
+
+    The resampling unit is the seed: one resampled seed list is shared by every
+    arm and every p, so all contrasts stay paired.  Everything this class
+    returns is in percentage points.
+    """
+
     def __init__(self, seeds: list[int], n_boot: int = N_BOOT, seed: int = BOOT_SEED):
         self.seeds = seeds
         self.rng = np.random.default_rng(seed)
@@ -83,20 +102,21 @@ class Bootstrap:
 
     def paired_diff(self, arms_a: list[str], arms_b: list[str], p: float,
                     by_cell: dict[tuple[str, float], dict[int, float]]) -> np.ndarray:
-        """Bootstrap distribution of mean(a) - mean(b) over cells, resampling seeds."""
+        """Bootstrap distribution of mean(a) - mean(b) over cells, in pp."""
         samples = np.zeros(len(self.index))
         cells = 0
         for arm_a, arm_b in zip(arms_a, arms_b):
             a = by_cell[(arm_a, p)]
             b = by_cell[(arm_b, p)]
-            diff = np.array([a[s] - b[s] for s in self.seeds])
+            diff = np.array([a[s] - b[s] for s in self.seeds]) * 100
             samples += diff[self.index].mean(axis=1)
             cells += 1
         return samples / max(cells, 1)
 
     def cell_mean(self, arm: str, p: float,
                   by_cell: dict[tuple[str, float], dict[int, float]]) -> np.ndarray:
-        values = np.array([by_cell[(arm, p)][s] for s in self.seeds])
+        """Bootstrap distribution of the cell's success rate, in %."""
+        values = np.array([by_cell[(arm, p)][s] for s in self.seeds]) * 100
         return values[self.index].mean(axis=1)
 
 
@@ -130,7 +150,7 @@ def md_table(header: list[str], rows: list[list[str]]) -> str:
 def analyse(results_dir: Path) -> dict[str, Any]:
     episodes_path = results_dir / "episodes.jsonl"
     rows = load_episodes(episodes_path)
-    keep, dropped = usable(rows)
+    keep, dropped, core_complete, infra_events = usable(rows)
     seeds = sorted({r["seed"] for r in keep})
     TABLES.mkdir(parents=True, exist_ok=True)
     FIGURES.mkdir(parents=True, exist_ok=True)
@@ -165,7 +185,7 @@ def analyse(results_dir: Path) -> dict[str, Any]:
     for arm in ARMS:
         for p in PS:
             a = agg[(arm, p)]
-            samples = boot.cell_mean(arm, p, success) * 100
+            samples = boot.cell_mean(arm, p, success)
             lo, hi = ci(samples)
             main_rows.append([arm, fmt_pct(p), str(a["n"]), f"{a['success']:.1f}",
                               f"[{lo:.1f}, {hi:.1f}]", f"{a['cost']:.1f}",
@@ -200,13 +220,17 @@ def analyse(results_dir: Path) -> dict[str, Any]:
         count = 0
         for arm_a, arm_b in zip(arm_a_cells, arm_b_cells):
             for p in p_list:
-                diff = np.array([success[(arm_a, p)][s] - success[(arm_b, p)][s] for s in seeds])
+                diff = np.array([success[(arm_a, p)][s] - success[(arm_b, p)][s]
+                                 for s in seeds]) * 100
                 samples += diff[boot.index].mean(axis=1)
                 count += 1
         samples /= count
-        point = 100 * sum(np.mean([success[(a, p)][s] for s in seeds]
-                                   - np.mean([success[(b, p)][s] for s in seeds]))
-                           for a, b in zip(arm_a_cells, arm_b_cells) for p in p_list) / count
+        # The observed effect (not the bootstrap mean): the decision rule
+        # thresholds the point estimate itself.
+        point = float(np.mean([
+            np.mean([success[(a, p)][s] for s in seeds])
+            - np.mean([success[(b, p)][s] for s in seeds])
+            for a, b in zip(arm_a_cells, arm_b_cells) for p in p_list]) * 100)
         return point, samples
 
     s_point, s_samples = mean_diff(["led_N", "led_C"], ["app_N", "app_C"], (0.2, 0.4))
@@ -341,14 +365,18 @@ def analyse(results_dir: Path) -> dict[str, Any]:
         md_table(["quantity", "value"], [
             ["episodes on disk", str(len(rows))],
             ["episodes in analysis", str(len(keep))],
-            ["infrastructure failures (excluded)", str(len(dropped))],
+            ["infrastructure failure events (repaired)", str(infra_events)],
+            ["cells still infra-failed (excluded)", str(len(dropped))],
             ["seeds used", f"{seeds[0]}..{seeds[-1]} ({len(seeds)})"],
+            ["seeds complete on the 4 core arms (preregistered rule)",
+             f"{len(core_complete)}"],
             ["bootstrap", f"{N_BOOT} resamples, seed {BOOT_SEED}"],
             ["delta", f"{DELTA} pp"],
         ]) + "\n", encoding="utf-8")
 
     # ---- figures ------------------------------------------------------------ #
-    make_figures(agg, success, seeds, boot, scripted_points, ages_ok, ages_bad, ages_by_arm)
+    make_figures(agg, success, seeds, boot, scripted_points, ages_ok, ages_bad, ages_by_arm,
+                 ages_by_p)
 
     return {"rows": rows, "keep": keep, "dropped": dropped, "seeds": seeds,
             "agg": agg, "s_point": s_point, "s_samples": s_samples, "s_label": s_label,
@@ -378,7 +406,8 @@ def classify(r: dict[str, Any]) -> str:
     return "other"
 
 
-def make_figures(agg, success, seeds, boot, scripted_points, ages_ok, ages_bad, ages_by_arm) -> None:
+def make_figures(agg, success, seeds, boot, scripted_points, ages_ok, ages_bad, ages_by_arm,
+                 ages_by_p) -> None:
     # ---- Pareto: one panel per p ------------------------------------------ #
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.8))
     colors = {"app_N": "#4C72B0", "led_N": "#DD8452", "app_C": "#55A868", "led_C": "#C44E52",

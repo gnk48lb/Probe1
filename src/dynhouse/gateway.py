@@ -93,7 +93,7 @@ class MagpieClient:
     """Thread-safe client with exponential backoff on infrastructure failures."""
 
     def __init__(self, base_url: str = DEFAULT_BASE_URL, api_key: str = "local",
-                 timeout: float = 150.0, max_retries: int = 4, max_tokens: int = 4000):
+                 timeout: float = 150.0, max_retries: int = 6, max_tokens: int = 4000):
         self.url = base_url.rstrip("/") + "/v1/chat/completions"
         self.api_key, self.timeout, self.max_retries = api_key, timeout, max_retries
         self.max_tokens = max_tokens

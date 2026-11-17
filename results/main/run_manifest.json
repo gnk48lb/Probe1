@@ -1,0 +1,29 @@
+{
+  "variant": "main",
+  "arms": [
+    "app_N",
+    "led_N",
+    "app_C",
+    "led_C",
+    "win_N",
+    "win_C"
+  ],
+  "disturbance_levels": [
+    0.0,
+    0.2,
+    0.4
+  ],
+  "model": "minimax-code-global/MiniMax-M3.1-Flash",
+  "temperature": 0,
+  "base_url": "http://127.0.0.1:3425",
+  "budget": 60,
+  "max_steps": 30,
+  "inspection_gap": 8,
+  "target_count_rule": "2 + seed % 2",
+  "env_max_asks": 1,
+  "env_freeze_asked": true,
+  "python": "3.12.13",
+  "platform": "win32",
+  "run_id": "dynhouse_20261117_162344",
+  "created_at": "2026-11-17T08:23:44.709701+00:00"
+}

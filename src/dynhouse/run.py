@@ -140,7 +140,7 @@ def main() -> None:
     parser.add_argument("--concurrency", type=int, default=10)
     parser.add_argument("--timeout", type=float, default=150.0)
     parser.add_argument("--max-tokens", type=int, default=4000)
-    parser.add_argument("--request-retries", type=int, default=4)
+    parser.add_argument("--request-retries", type=int, default=6)
     parser.add_argument("--format-retries", type=int, default=2)
     parser.add_argument("--base-url", default=base_url())
     parser.add_argument("--api-key", default=api_key())
@@ -186,14 +186,21 @@ def main() -> None:
     }
     if manifest_path.exists():
         previous = json.loads(manifest_path.read_text(encoding="utf-8"))
+        # Transport knobs and the seed range are extendable: a pilot run may be
+        # continued by the full run, and a retry may use a different timeout.
+        # Everything else (model, arms, p levels, env, variant) must match
+        # exactly, or the output directory mixes two experiments.
         for key in ("run_id", "created_at", "concurrency", "timeout_s", "max_tokens",
-                    "request_retries", "format_retries"):
+                    "request_retries", "format_retries", "seeds", "seed_start", "seed_range"):
             previous.pop(key, None)
             config.pop(key, None)
         if previous != config:
             raise SystemExit(f"Output manifest differs from {manifest_path}; use a new output "
                              f"directory.\n  previous: {previous}\n  requested: {config}")
-        config["run_id"] = json.loads(manifest_path.read_text(encoding="utf-8"))["run_id"]
+        original = json.loads(manifest_path.read_text(encoding="utf-8"))
+        config["run_id"] = original["run_id"]
+        config["created_at"] = original["created_at"]
+        manifest_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
     else:
         manifest_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -293,6 +300,10 @@ def main() -> None:
                 record(summary, trace_rows, raw)
         print("Repair pass finished", flush=True)
 
+    rows = load_jsonl(episodes_path)
+    latest = {}
+    for row in rows:
+        latest[(row["arm"], row["disturbance_p"], row["seed"])] = row
     remaining = [row for key, row in latest.items()
                  if row.get("infra_failed") or row.get("failure_reason") == "infrastructure_failure"]
     print(f"Run finished in {(time.monotonic()-started)/60:.1f} min. "
