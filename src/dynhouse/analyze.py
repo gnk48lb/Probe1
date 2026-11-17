@@ -20,7 +20,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
-from .env import ITEMS  # noqa: E402
+from .env import ITEMS, named_items  # noqa: E402
 from .scripted import POLICIES, evaluate  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -214,6 +214,24 @@ def analyse(results_dir: Path) -> dict[str, Any]:
     pair_table = md_table(["contrast", "p", "diff (pp)", "95% CI", "CI excludes 0"], pair_rows)
     (TABLES / "paired_differences.md").write_text(pair_table + "\n", encoding="utf-8")
 
+    # ---- the value of memory (window arm vs the two memory arms) ---------- #
+    # A preregistered secondary, descriptive comparison: the window arms hold no
+    # long-term memory at all, so the difference against them measures what the
+    # memory itself is worth.
+    memory_rows = []
+    for arm_mem, arm_win in (("app_N", "win_N"), ("led_N", "win_N"),
+                             ("app_C", "win_C"), ("led_C", "win_C")):
+        for p in PS:
+            samples = boot.paired_diff([arm_mem], [arm_win], p, success)
+            point = 100 * (np.mean([success[(arm_mem, p)][s] for s in seeds])
+                           - np.mean([success[(arm_win, p)][s] for s in seeds]))
+            lo, hi = ci(samples)
+            memory_rows.append([f"{arm_mem} - {arm_win}", fmt_pct(p), f"{point:+.1f}",
+                                f"[{lo:+.1f}, {hi:+.1f}]", "yes" if lo > 0 else "no"])
+    memory_table = md_table(["contrast (value of memory)", "p", "diff (pp)", "95% CI",
+                             "CI excludes 0"], memory_rows)
+    (TABLES / "memory_value.md").write_text(memory_table + "\n", encoding="utf-8")
+
     # ---- S, S0, Pi ------------------------------------------------------- #
     def mean_diff(arm_a_cells, arm_b_cells, p_list):
         samples = np.zeros(len(boot.index))
@@ -389,6 +407,8 @@ def analyse(results_dir: Path) -> dict[str, Any]:
         + sig_table + "\n\n### first 40 failed episodes\n\n"
         + class_samples + "\n", encoding="utf-8")
     (TABLES / "cost_dominance.md").write_text(dominance_table + "\n", encoding="utf-8")
+    (TABLES / "pick_outcomes.md").write_text(
+        pick_outcome_table(keep, results_dir / "traces.jsonl"), encoding="utf-8")
     (TABLES / "run_overview.md").write_text(
         md_table(["quantity", "value"], [
             ["episodes on disk", str(len(rows))],
@@ -502,6 +522,70 @@ def make_figures(agg, success, seeds, boot, scripted_points, ages_ok, ages_bad, 
     fig.tight_layout()
     fig.savefig(FIGURES / "evidence_age_by_arm.png", dpi=150)
     plt.close(fig)
+
+
+def last_confirmation_source(steps: list[dict[str, Any]], item: str, upto: int) -> str | None:
+    """Was the item last confirmed by the human or by an observation?
+
+    A human answer freezes the item until it is picked up, so it never goes
+    stale; an observation expires as soon as the roommate acts.  The question
+    is matched with whole item names, exactly like the environment does.
+    """
+    source = None
+    for step in steps:
+        if step["step"] >= upto:
+            break
+        action = step["action"]
+        if action["action"] == "ask_human" and step.get("ok"):
+            if named_items(action.get("question", "")) == [item]:
+                source = "human answer"
+        elif action["action"] == "observe" and step.get("ok"):
+            if item in step.get("message", ""):
+                source = "observation"
+    return source
+
+
+def pick_outcome_table(keep, traces_path: Path) -> str:
+    """Miss rate of a grasp, split by what the agent's last evidence was."""
+    steps_by_cell: dict[tuple[str, float, int], list[dict[str, Any]]] = defaultdict(list)
+    if traces_path.exists():
+        for row in load_episodes(traces_path):
+            steps_by_cell[(row["arm"], row["disturbance_p"], row["seed"])].append(row)
+    stats: dict[tuple[float, str], Counter] = defaultdict(Counter)
+    age_stats: dict[tuple[float, str], Counter] = defaultdict(Counter)
+    for row in keep:
+        key = (row["arm"], row["disturbance_p"], row["seed"])
+        steps = sorted(steps_by_cell.get(key, []), key=lambda s: s["step"])
+        for pick in row.get("pick_records", []):
+            source = last_confirmation_source(steps, pick["item"], pick["step"]) or "unknown"
+            outcome = "ok" if pick["ok"] else "miss"
+            stats[(row["disturbance_p"], source)][outcome] += 1
+            age = pick.get("evidence_age")
+            band = ("age<=1" if age is not None and age <= 1
+                    else "age 2-7" if age is not None and age <= 7 else "age>=8")
+            age_stats[(row["disturbance_p"], band)][outcome] += 1
+    rows = []
+    for p in PS:
+        for source in ("observation", "human answer", "unknown"):
+            counter = stats.get((p, source))
+            if not counter:
+                continue
+            ok, miss = counter["ok"], counter["miss"]
+            rows.append([fmt_pct(p), source, str(ok), str(miss),
+                         f"{100 * miss / max(ok + miss, 1):.1f}%"])
+    table = md_table(["p", "last evidence", "grasp ok", "grasp missed", "miss rate"], rows)
+    age_rows = []
+    for p in PS:
+        for band in ("age<=1", "age 2-7", "age>=8"):
+            counter = age_stats.get((p, band))
+            if not counter:
+                continue
+            ok, miss = counter["ok"], counter["miss"]
+            age_rows.append([fmt_pct(p), band, str(ok), str(miss),
+                             f"{100 * miss / max(ok + miss, 1):.1f}%"])
+    age_table = md_table(["p", "evidence age (steps)", "grasp ok", "grasp missed", "miss rate"],
+                          age_rows)
+    return (table + "\n\n### miss rate by age of the last confirmation\n\n" + age_table + "\n")
 
 
 def main() -> None:

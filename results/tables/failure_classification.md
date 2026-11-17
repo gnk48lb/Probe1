@@ -1,33 +1,33 @@
 | category | failed episodes |
 |---|---|
-| acted on stale memory | 17 |
-| verified but the target moved again | 23 |
-| wasted the ask | 34 |
-| invalid format | 0 |
+| acted on stale memory | 178 |
+| verified but the target moved again | 204 |
+| wasted the ask | 313 |
+| invalid format | 1 |
 | budget or steps exhausted | 0 |
 | other | 0 |
-| **total** | **74** |
+| **total** | **696** |
 
 | arm | failed | acted on stale memory | verified but the target moved again | wasted the ask | invalid format | budget or steps exhausted | other |
 |---|---|---|---|---|---|---|---|
-| app_N | 11 | 1 | 5 | 5 | 0 | 0 | 0 |
-| led_N | 8 | 0 | 4 | 4 | 0 | 0 | 0 |
-| app_C | 9 | 2 | 3 | 4 | 0 | 0 | 0 |
-| led_C | 8 | 1 | 2 | 5 | 0 | 0 | 0 |
-| win_N | 19 | 6 | 5 | 8 | 0 | 0 | 0 |
-| win_C | 19 | 7 | 4 | 8 | 0 | 0 | 0 |
+| app_N | 97 | 22 | 29 | 46 | 0 | 0 | 0 |
+| led_N | 100 | 21 | 45 | 34 | 0 | 0 | 0 |
+| app_C | 101 | 19 | 32 | 49 | 1 | 0 | 0 |
+| led_C | 88 | 13 | 29 | 46 | 0 | 0 | 0 |
+| win_N | 155 | 53 | 37 | 65 | 0 | 0 | 0 |
+| win_C | 155 | 50 | 32 | 73 | 0 | 0 | 0 |
 
 ### failure signatures (overlapping)
 
 | signature (categories overlap) | failed episodes | share |
 |---|---|---|
-| a grasp missed (stale pick) | 40 | 54.1% |
-| asked again after the one allowed ask | 66 | 89.2% |
-| ran out of budget | 59 | 79.7% |
-| ran out of steps | 0 | 0.0% |
-| ended in a safety violation | 16 | 21.6% |
-| never used the ask | 2 | 2.7% |
-| used the ask | 72 | 97.3% |
+| a grasp missed (stale pick) | 382 | 54.9% |
+| asked again after the one allowed ask | 652 | 93.7% |
+| ran out of budget | 538 | 77.3% |
+| ran out of steps | 3 | 0.4% |
+| ended in a safety violation | 172 | 24.7% |
+| never used the ask | 13 | 1.9% |
+| used the ask | 683 | 98.1% |
 
 ### first 40 failed episodes
 
