@@ -199,6 +199,12 @@ def main() -> None:
                              f"directory.\n  previous: {previous_cmp}\n  requested: {config_cmp}")
         config["run_id"] = previous["run_id"]
         config["created_at"] = previous["created_at"]
+        # The seed range accumulates across resumed runs (the preregistered
+        # extension adds seeds 1060-1099 to the main range 1000-1059).
+        ranges = [previous.get("seed_range") or [], config.get("seed_range") or []]
+        ranges = [r for r in ranges if r]
+        config["seed_range"] = [min(r[0] for r in ranges), max(r[1] for r in ranges)]
+        config["seeds"] = config["seed_range"][1] - config["seed_range"][0] + 1
     manifest_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
 
     done_keys = {(r["arm"], r["disturbance_p"], r["seed"]) for r in load_jsonl(episodes_path)}
