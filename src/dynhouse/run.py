@@ -174,7 +174,8 @@ def main() -> None:
     config = {
         "run_id": args.run_id or time.strftime("dynhouse_%Y%m%d_%H%M%S"),
         "created_at": now(), "variant": args.variant, "arms": arms, "disturbance_levels": ps,
-        "seed_start": args.seed_start, "seeds": args.seeds, "seed_range": [seeds[0], seeds[-1]],
+        "seed_start": args.seed_start, "seeds": args.seeds,
+        "seed_range": [seeds[0], seeds[-1]] if seeds else [],
         "model": args.model, "temperature": 0, "max_tokens": args.max_tokens,
         "concurrency": args.concurrency, "timeout_s": args.timeout,
         "request_retries": args.request_retries, "format_retries": args.format_retries,
@@ -221,6 +222,11 @@ def main() -> None:
     last_progress = started
 
     def record(summary: dict[str, Any], trace_rows: list[dict[str, Any]], raw: dict[str, Any]) -> None:
+        # The episode row stays compact: the full event log and the ground
+        # truth stay out of the analysis file (the step traces keep the
+        # roommate moves that the failure analysis needs).
+        for bulky in ("events", "ground_truth"):
+            summary.pop(bulky, None)
         writers["episodes"].write(summary)
         for row in trace_rows:
             writers["traces"].write(row)
