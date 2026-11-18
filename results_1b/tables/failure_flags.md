@@ -1,0 +1,37 @@
+| arm | flag | failed episodes | share of failures | successful episodes | share of successes | relative risk |
+|---|---|---|---|---|---|---|
+| base | competing_pick_fail | 3/104 | 2.9% | 0/196 | 0.0% | inf |
+| base | stale_pick_fail | 34/104 | 32.7% | 0/196 | 0.0% | inf |
+| base | high_risk_should_verify_pick | 20/104 | 19.2% | 18/196 | 9.2% | 2.09 |
+| base | repeat_ask | 0/104 | 0.0% | 0/196 | 0.0% | nan |
+| base | budget_exhausted | 77/104 | 74.0% | 0/196 | 0.0% | inf |
+| base | safety_violation | 30/104 | 28.8% | 0/196 | 0.0% | inf |
+| base | never_used_ask | 0/104 | 0.0% | 2/196 | 1.0% | 0.00 |
+| hint | competing_pick_fail | 3/107 | 2.8% | 0/193 | 0.0% | inf |
+| hint | stale_pick_fail | 38/107 | 35.5% | 6/193 | 3.1% | 11.42 |
+| hint | high_risk_should_verify_pick | 19/107 | 17.8% | 26/193 | 13.5% | 1.32 |
+| hint | repeat_ask | 0/107 | 0.0% | 0/193 | 0.0% | nan |
+| hint | budget_exhausted | 94/107 | 87.9% | 0/193 | 0.0% | inf |
+| hint | safety_violation | 19/107 | 17.8% | 0/193 | 0.0% | inf |
+| hint | never_used_ask | 1/107 | 0.9% | 6/193 | 3.1% | 0.30 |
+| shield | competing_pick_fail | 3/109 | 2.8% | 0/191 | 0.0% | inf |
+| shield | stale_pick_fail | 41/109 | 37.6% | 4/191 | 2.1% | 17.96 |
+| shield | high_risk_should_verify_pick | 14/109 | 12.8% | 18/191 | 9.4% | 1.36 |
+| shield | repeat_ask | 0/109 | 0.0% | 0/191 | 0.0% | nan |
+| shield | budget_exhausted | 88/109 | 80.7% | 0/191 | 0.0% | inf |
+| shield | safety_violation | 22/109 | 20.2% | 0/191 | 0.0% | inf |
+| shield | never_used_ask | 0/109 | 0.0% | 4/191 | 2.1% | 0.00 |
+| both | competing_pick_fail | 2/116 | 1.7% | 0/184 | 0.0% | inf |
+| both | stale_pick_fail | 30/116 | 25.9% | 6/184 | 3.3% | 7.93 |
+| both | high_risk_should_verify_pick | 12/116 | 10.3% | 25/184 | 13.6% | 0.76 |
+| both | repeat_ask | 0/116 | 0.0% | 0/184 | 0.0% | nan |
+| both | budget_exhausted | 94/116 | 81.0% | 0/184 | 0.0% | inf |
+| both | safety_violation | 22/116 | 19.0% | 0/184 | 0.0% | inf |
+| both | never_used_ask | 1/116 | 0.9% | 5/184 | 2.7% | 0.32 |
+| auto | competing_pick_fail | 1/102 | 1.0% | 0/198 | 0.0% | inf |
+| auto | stale_pick_fail | 47/102 | 46.1% | 54/198 | 27.3% | 1.69 |
+| auto | high_risk_should_verify_pick | 12/102 | 11.8% | 30/198 | 15.2% | 0.78 |
+| auto | repeat_ask | 0/102 | 0.0% | 0/198 | 0.0% | nan |
+| auto | budget_exhausted | 79/102 | 77.5% | 0/198 | 0.0% | inf |
+| auto | safety_violation | 24/102 | 23.5% | 0/198 | 0.0% | inf |
+| auto | never_used_ask | 0/102 | 0.0% | 7/198 | 3.5% | 0.00 |

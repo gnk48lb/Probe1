@@ -315,10 +315,12 @@ def analyse(results_dir: Path) -> dict[str, Any]:
             st = cell_stats[key]
             if complete:
                 cell_intervals[key] = cell_ci(rows, arm, p, complete)
-            per_p_rows.append([f"{p}", arm, f"{st['success']:.1f}", f"{st['cost']:.1f}",
-                               f"{st['safety']:.1f}", f"{st['blocked']:.2f}", str(st["n"])])
+            lo, hi = cell_intervals.get(key, (st["success"], st["success"]))
+            per_p_rows.append([f"{p}", arm, f"{st['success']:.1f}", f"[{lo:.1f}, {hi:.1f}]",
+                               f"{st['cost']:.1f}", f"{st['safety']:.1f}",
+                               f"{st['blocked']:.2f}", str(st["n"])])
     (TABLES / "main_results.md").write_text(
-        md_table(["p", "arm", "SR%", "cost", "safety%", "blocked", "n"], per_p_rows) + "\n",
+        md_table(["p", "arm", "SR%", "SR 95% CI", "cost", "safety%", "blocked", "n"], per_p_rows) + "\n",
         encoding="utf-8")
 
     # ---- mechanism metrics -------------------------------------------------- #
@@ -467,7 +469,7 @@ def make_figure(cell_stats, scripted_points, cell_intervals) -> None:
         ax.set_xlabel("success rate (%)")
         ax.grid(alpha=0.3, axis="x")
     axes[0].plot([], [], color="gray", linestyle=":", label="scripted reference lines")
-    axes[0].legend(fontsize=8, loc="lower right")
+    axes[0].legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=1)
     fig.suptitle("Controller permission gradient (points: SR, bars: 95% CI; dotted: scripted lines)",
                  fontsize=11)
     fig.tight_layout()
