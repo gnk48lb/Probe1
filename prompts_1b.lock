@@ -1,0 +1,9 @@
+{
+  "written_at": "2026-11-18T07:02:57.115733+00:00",
+  "files": {
+    "src/dynhouse/prompts_1b.py": "bc2ad1002027f1789704a45f1f0f8b591da22f833d3367487606b19143c6f45e",
+    "src/dynhouse/controller.py": "46d5afed6759279fb6de134e057b6fa4160c310004e32d1efc4a7cbdee722114",
+    "src/dynhouse/analyze_1b.py": "703fe1c3051c5ff048627554b1699ac3edf5eb8d5ffc2caa0d5debe97b72148a",
+    "age_gate_reference.py": "6cb55dca36308c70181d7b6bbe28ff52eee7f441a9696b9f0c024b141bf186a0"
+  }
+}

@@ -16,6 +16,7 @@ shield veto as an environment step (no world change, no budget, one step).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -40,6 +41,40 @@ ARMS = ("base", "hint", "shield", "both", "auto")
 ARMS_STAGE3 = ("base_old",)
 PS = (0.1, 0.2, 0.4)
 SEED_BLOCK = 25
+
+# The preregistered sources: the prompt, the gate rule, the analysis and the
+# reference implementation.  A mismatch aborts the run.
+LOCKED_SOURCES_1B = ("src/dynhouse/prompts_1b.py", "src/dynhouse/controller.py",
+                     "src/dynhouse/analyze_1b.py", "age_gate_reference.py")
+LOCK_PATH_1B = ROOT / "prompts_1b.lock"
+
+
+def sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def compute_lock_1b() -> dict[str, str]:
+    return {rel: sha256_file(ROOT / rel) for rel in LOCKED_SOURCES_1B}
+
+
+def verify_lock_1b(strict: bool = True) -> bool:
+    """Refuse to run when the prompt, the gate rule or the analysis drifted."""
+    current = compute_lock_1b()
+    if not LOCK_PATH_1B.exists():
+        if strict:
+            print(f"ERROR: {LOCK_PATH_1B.name} is missing; the preregistration is not in place.",
+                  file=sys.stderr)
+        return False
+    expected = json.loads(LOCK_PATH_1B.read_text(encoding="utf-8"))["files"]
+    if expected != current:
+        print("ERROR: the preregistered sources do not match prompts_1b.lock; refusing to run.",
+              file=sys.stderr)
+        for rel in LOCKED_SOURCES_1B:
+            if expected.get(rel) != current.get(rel):
+                print(f"  {rel}: locked {expected.get(rel)} != current {current.get(rel)}",
+                      file=sys.stderr)
+        return False
+    return True
 
 
 def now() -> str:
@@ -316,7 +351,17 @@ def main() -> None:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--progress-seconds", type=float, default=600.0)
     parser.add_argument("--run-id", default=None)
+    parser.add_argument("--write-lock", action="store_true")
+    parser.add_argument("--no-lock-check", action="store_true")
     args = parser.parse_args()
+
+    if args.write_lock:
+        payload = {"written_at": now(), "files": compute_lock_1b()}
+        LOCK_PATH_1B.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"wrote {LOCK_PATH_1B}")
+        return
+    if not args.no_lock_check and not verify_lock_1b():
+        raise SystemExit(2)
 
     arms = tuple(a.strip() for a in args.arms.split(",") if a.strip())
     ps = tuple(float(p) for p in args.ps.split(",") if p.strip())

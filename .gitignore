@@ -6,3 +6,6 @@ __pycache__/
 results/**/traces.jsonl
 results/**/raw.jsonl
 results/**/requests.jsonl
+results_1b/**/traces.jsonl
+results_1b/**/raw.jsonl
+results_1b/smoke/
