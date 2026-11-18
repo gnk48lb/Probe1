@@ -1,5 +1,5 @@
 {
-  "git_hash": "d1f32893c6f8f6a047073b92f2eaafe99008c7db",
+  "git_hash": "50cdd213210d5ba21dca7f50ceebb12063e0f799",
   "branch": "probe1c",
   "frozen_base": "probe1-final",
   "model": "minimax-code-global/MiniMax-M3.1-Flash",
@@ -37,5 +37,6 @@
       4299
     ]
   ],
-  "written_at": "2026-11-18T12:11:26.517617+00:00"
+  "written_at": "2026-11-18T12:15:44.504102+00:00",
+  "note": "the commit the run is launched from: it contains every source file of the experiment; the only commit after it adds this file and the DEVIATIONS note"
 }
