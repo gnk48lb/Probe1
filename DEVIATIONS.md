@@ -7,9 +7,13 @@ away.
 **Status at `prereg-1b`:** no deviations.  The preregistration, the lock and the
 smoke test were finished before any test seed (3000+) was run.
 
+**Status at `prereg-1b-v2`:** one deviation, entry 1 below.  `prereg-1b` is left
+untouched; the change was made before any test seed was run and the lock was
+regenerated.
+
 | # | phase | planned | done | why | noticed |
 |---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| 1 | Phase 3, before any test seed | `analyze_1b.py` reports `INSTRUMENT_FAILED` whenever PC is not `HELPS` | the instrument check distinguishes `NOT EVALUABLE` (PC has no complete seeds) from `INSTRUMENT_FAILED` (PC is judged something else); the permission-gradient figure now shows the real bootstrap CI per arm instead of a fixed +/-5 pp | a missing or partial data set would have been reported as a failed instrument and could have aborted a valid experiment; the figure's error bars must be the preregistered CI | while running `analyze_1b.py` on the Phase 2 smoke data (dev seeds), before any test seed |
 
 ## Notes on development-time fixes (before the preregistration)
 

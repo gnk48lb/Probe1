@@ -84,6 +84,20 @@ def success_map(rows: list[dict[str, Any]]) -> dict[tuple[str, float], dict[int,
     return out
 
 
+def cell_ci(rows: list[dict[str, Any]], arm: str, p: float, seeds: list[int]
+            ) -> tuple[float, float]:
+    """Bootstrap CI of one cell's success rate, in percentage points.
+
+    The same resampling index as the paired bootstrap, so the figure and the
+    estimators are consistent.
+    """
+    success = success_map(rows)
+    values = np.array([success[(arm, p)][s] for s in seeds]) * 100
+    rng = np.random.default_rng(BOOT_SEED)
+    index = rng.integers(0, len(seeds), size=(N_BOOT, len(seeds)))
+    return percentile_ci(values[index].mean(axis=1))
+
+
 def estimate(rows: list[dict[str, Any]], arm_a: str, arm_b: str,
              ps: tuple[float, ...] = PS) -> dict[str, Any]:
     """mean_p [SR(arm_a, p) - SR(arm_b, p)] with a paired bootstrap."""
@@ -267,7 +281,15 @@ def analyse(results_dir: Path) -> dict[str, Any]:
     # instrument check
     pc = results["PC (positive control)"]
     primary = results["G_both (primary)"]
-    instrument_ok = pc["label"] == "HELPS"
+    if pc["label"] == "NO_DATA":
+        instrument_ok = False
+        instrument_state = "NOT EVALUABLE (no complete seeds for the positive control)"
+    elif pc["label"] == "HELPS":
+        instrument_ok = True
+        instrument_state = "OK (PC is HELPS)"
+    else:
+        instrument_ok = False
+        instrument_state = "INSTRUMENT_FAILED"
     if instrument_ok:
         narrative = ("PC=HELPS and G_both=HELPS -> harness gating recovers part of the gap "
                      "(the paper's main line); PC=HELPS and G_both otherwise -> the LLM cannot "
@@ -277,17 +299,22 @@ def analyse(results_dir: Path) -> dict[str, Any]:
         narrative = ("PC is not HELPS -> INSTRUMENT_FAILED: no 'the controller does not help' "
                      "reading of hint / shield / both is allowed; stop and diagnose")
     (TABLES / "interpretation.md").write_text(
-        md_table(["PC verdict", "G_both verdict", "reading"],
-                 [[pc["label"], primary["label"], narrative]]) + "\n", encoding="utf-8")
+        md_table(["PC verdict", "G_both verdict", "instrument state", "reading"],
+                 [[pc["label"], primary["label"], instrument_state, narrative]]) + "\n",
+        encoding="utf-8")
 
     # ---- per-p main table -------------------------------------------------- #
     per_p_rows = []
+    complete = complete_seeds(rows, CORE, PS)
+    cell_intervals: dict[tuple[str, float], tuple[float, float]] = {}
     for p in PS:
         for arm in ARMS:
             key = (arm, p)
             if key not in cell_stats:
                 continue
             st = cell_stats[key]
+            if complete:
+                cell_intervals[key] = cell_ci(rows, arm, p, complete)
             per_p_rows.append([f"{p}", arm, f"{st['success']:.1f}", f"{st['cost']:.1f}",
                                f"{st['safety']:.1f}", f"{st['blocked']:.2f}", str(st["n"])])
     (TABLES / "main_results.md").write_text(
@@ -405,14 +432,14 @@ def analyse(results_dir: Path) -> dict[str, Any]:
             ["delta", f"{DELTA} pp"],
         ]) + "\n", encoding="utf-8")
 
-    make_figure(cell_stats, scripted_points)
+    make_figure(cell_stats, scripted_points, cell_intervals)
 
     return {"rows": rows, "results": results, "pc": pc, "primary": primary,
-            "instrument_ok": instrument_ok, "cell_stats": cell_stats,
-            "infra_events": infra_events, "seeds": seeds}
+            "instrument_ok": instrument_ok, "instrument_state": instrument_state,
+            "cell_stats": cell_stats, "infra_events": infra_events, "seeds": seeds}
 
 
-def make_figure(cell_stats, scripted_points) -> None:
+def make_figure(cell_stats, scripted_points, cell_intervals) -> None:
     """The controller permission gradient, faceted by p."""
     fig, axes = plt.subplots(1, len(PS), figsize=(15, 4.8))
     order = ["base", "hint", "shield", "both", "auto"]
@@ -422,34 +449,30 @@ def make_figure(cell_stats, scripted_points) -> None:
     colors = {"base": "#4C72B0", "hint": "#55A868", "shield": "#C44E52",
               "both": "#DD8452", "auto": "#8172B2"}
     for ax, p in zip(axes, PS):
-        xs, ys = [], []
+        for policy in POLICIES:
+            cost, succ = scripted_points[(policy, p)]
+            ax.axvline(succ, color="gray", linestyle=":", linewidth=1, alpha=0.7)
         for i, arm in enumerate(order):
             key = (arm, p)
             if key not in cell_stats:
                 continue
             st = cell_stats[key]
-            ax.errorbar(st["success"], i, xerr=5.0, fmt="o", color=colors[arm],
-                        capsize=3, markersize=8)
-            xs.append(st["success"])
-            ys.append(i)
+            lo, hi = cell_intervals.get(key, (st["success"], st["success"]))
+            ax.errorbar(st["success"], i, xerr=[[st["success"] - lo], [hi - st["success"]]],
+                        fmt="o", color=colors[arm], capsize=3, markersize=8)
         ax.set_yticks(range(len(order)))
         ax.set_yticklabels([labels[a] for a in order])
         ax.invert_yaxis()
-        for policy, (cost, succ) in scripted_points.items():
-            if abs(policy_cost_p(scripted_points, policy, p)) < 1e-9:
-                ax.axvline(succ, color="gray", linestyle=":", linewidth=1, alpha=0.8)
         ax.set_title(f"p = {p}")
         ax.set_xlabel("success rate (%)")
         ax.grid(alpha=0.3, axis="x")
-    fig.suptitle("Controller permission gradient (points: SR, bars: +/-5 pp; dotted: scripted lines)",
+    axes[0].plot([], [], color="gray", linestyle=":", label="scripted reference lines")
+    axes[0].legend(fontsize=8, loc="lower right")
+    fig.suptitle("Controller permission gradient (points: SR, bars: 95% CI; dotted: scripted lines)",
                  fontsize=11)
     fig.tight_layout()
     fig.savefig(FIGURES / "permission_gradient.png", dpi=150)
     plt.close(fig)
-
-
-def policy_cost_p(scripted_points, policy, p):
-    return scripted_points.get((policy, p), (0, 0))[1]
 
 
 def main() -> None:
@@ -462,8 +485,7 @@ def main() -> None:
     for label, est in out["results"].items():
         print(f"  {label:24s} {est['point']:+6.1f} pp  CI [{est['lo']:+6.1f}, {est['hi']:+6.1f}]  "
               f"N={est['n']}  -> {est['label']}")
-    print(f"instrument check (PC must be HELPS): "
-          f"{'OK' if out['instrument_ok'] else 'INSTRUMENT_FAILED'}")
+    print(f"instrument check (PC must be HELPS): {out['instrument_state']}")
     print(f"tables -> {TABLES}, figures -> {FIGURES}")
 
 
