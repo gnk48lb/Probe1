@@ -145,9 +145,11 @@ def make_policy(name, graph, items):
 
 
 def run_episode(policy_name: str, seed: int, p: float, *, max_asks: int = 1,
-                freeze_asked: bool = True, n_targets: int | None = None) -> dict[str, Any]:
+                freeze_asked: bool = True, n_targets: int | None = None,
+                allow_any_p: bool = True) -> dict[str, Any]:
     env = DynamicHouseEnv(seed, p, n_targets=n_targets if n_targets is not None else 2 + seed % 2,
-                          max_asks=max_asks, freeze_asked=freeze_asked)
+                          max_asks=max_asks, freeze_asked=freeze_asked,
+                          allow_any_p=allow_any_p)
     mem, policy = ScriptedMemory(env), make_policy(policy_name, GRAPH, ITEMS)
     for _ in range(200):
         if env.done:
@@ -162,8 +164,9 @@ def run_episode(policy_name: str, seed: int, p: float, *, max_asks: int = 1,
 
 
 def evaluate(policy_name: str, seeds, p: float, *, max_asks: int = 1,
-             freeze_asked: bool = True) -> dict[str, float]:
-    runs = [run_episode(policy_name, s, p, max_asks=max_asks, freeze_asked=freeze_asked)
+             freeze_asked: bool = True, allow_any_p: bool = True) -> dict[str, float]:
+    runs = [run_episode(policy_name, s, p, max_asks=max_asks, freeze_asked=freeze_asked,
+                         allow_any_p=allow_any_p)
             for s in seeds]
     n = len(runs)
     return {

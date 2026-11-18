@@ -79,6 +79,8 @@ class DynamicHouseEnv:
     max_steps: int = 30
     max_asks: int = 1
     freeze_asked: bool = True
+    allow_any_p: bool = False
+    expose_asks: bool = False
     _rng: random.Random = field(init=False, repr=False)
     locations: dict[str, str] = field(init=False)
     room_items: dict[str, set[str]] = field(init=False)
@@ -100,9 +102,13 @@ class DynamicHouseEnv:
     stale_pick_count: int = field(init=False, default=0)
     safety_count: int = field(init=False, default=0)
     invalid_count: int = field(init=False, default=0)
+    blocked_count: int = field(init=False, default=0)
 
     def __post_init__(self) -> None:
-        if self.disturbance_p not in (0.0, 0.2, 0.4):
+        if self.allow_any_p:
+            if not 0.0 <= self.disturbance_p <= 1.0:
+                raise ValueError("disturbance_p must be in [0, 1] when allow_any_p is set")
+        elif self.disturbance_p not in (0.0, 0.2, 0.4):
             raise ValueError("disturbance_p must be 0.0, 0.2, or 0.4")
         if self.n_targets not in (2, 3) or not 0 <= self.inspection_gap <= 30:
             raise ValueError("invalid task or inspection-gap configuration")
@@ -171,12 +177,15 @@ class DynamicHouseEnv:
 
     def public_state(self) -> dict[str, Any]:
         """Observable task state, excluding all ground-truth locations."""
-        return {"current_room": self.current_room, "held_items": list(self.held),
-                "targets": deepcopy(self.targets), "completed_items": sorted(self.placed),
-                "current_subgoal": deepcopy(self.current_target), "remaining_budget": self.budget,
-                "step": self.step_count, "max_steps": self.max_steps,
-                "disturbance_p": self.disturbance_p, "neighbors": list(GRAPH[self.current_room]),
-                "inspection_gap_steps": self.inspection_gap, "score": self.score}
+        state = {"current_room": self.current_room, "held_items": list(self.held),
+                 "targets": deepcopy(self.targets), "completed_items": sorted(self.placed),
+                 "current_subgoal": deepcopy(self.current_target), "remaining_budget": self.budget,
+                 "step": self.step_count, "max_steps": self.max_steps,
+                 "disturbance_p": self.disturbance_p, "neighbors": list(GRAPH[self.current_room]),
+                 "inspection_gap_steps": self.inspection_gap, "score": self.score}
+        if self.expose_asks:
+            state["asks_remaining"] = max(self.max_asks - self.ask_count, 0)
+        return state
 
     def ground_truth(self) -> dict[str, Any]:
         return {"room_items": {r: sorted(v) for r, v in self.room_items.items()},
@@ -317,6 +326,33 @@ class DynamicHouseEnv:
         outcome.update(done=self.done, success=self.success, episode_failure=self.failure_reason)
         return outcome
 
+    def controller_veto(self, action: dict[str, Any], reason: str) -> dict[str, Any]:
+        """A blocked action (Probe 1b).
+
+        The world does not change, no budget is spent, and one step is consumed
+        -- it counts towards the 30-step limit, so an agent that keeps trying
+        the same blocked grasp runs out of steps instead of running forever.
+        """
+        if self.done:
+            raise RuntimeError("episode is already done")
+        before = self.budget
+        self.step_count += 1
+        self.blocked_count += 1
+        outcome: dict[str, Any] = {
+            "action": deepcopy(action), "ok": False,
+            "message": f"BLOCKED by controller: {reason}",
+            "failure_reason": "controller_blocked", "cost": 0,
+            "step": self.step_count, "budget_before": before, "budget_after": self.budget,
+            "score": self.score, "disturbance": None,
+            "public_state": self.public_state(),
+        }
+        self.event_log.append({"kind": "controller_block", "step": self.step_count,
+                               **deepcopy(outcome)})
+        if self.step_count >= self.max_steps:
+            self._finish("max_steps")
+        outcome.update(done=self.done, success=self.success, episode_failure=self.failure_reason)
+        return outcome
+
     def episode_summary(self) -> dict[str, Any]:
         inferred = self.failure_reason
         if inferred is None and not self.success and self.stale_pick_count:
@@ -327,6 +363,6 @@ class DynamicHouseEnv:
                 "total_cost": 60 - self.budget, "score": self.score, "steps": self.step_count,
                 "ask_count": self.ask_count, "pick_count": self.pick_count,
                 "stale_pick_count": self.stale_pick_count, "safety_count": self.safety_count,
-                "invalid_count": self.invalid_count,
+                "invalid_count": self.invalid_count, "blocked_count": self.blocked_count,
                 "inspection": deepcopy(self.inspection), "targets": deepcopy(self.targets),
                 "ground_truth": self.ground_truth(), "events": deepcopy(self.event_log)}
