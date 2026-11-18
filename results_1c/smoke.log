@@ -1,0 +1,19 @@
+run dynhouse_20261118_200534 variant=main model=minimax-code-global/MiniMax-M3.1-Flash concurrency=10
+10 episodes to run / 10 cells (0 already done)
+  [1/10] p=0.2 seed=1 app_C: success=True reason=None cost=26 steps=11
+  [2/10] p=0.2 seed=2 led_C: success=True reason=None cost=28 steps=11
+  [3/10] p=0.2 seed=3 led_C: success=True reason=None cost=30 steps=13
+  [4/10] p=0.2 seed=1 led_C: success=True reason=None cost=23 steps=10
+  [5/10] p=0.2 seed=0 led_C: success=True reason=None cost=29 steps=12
+  [6/10] p=0.2 seed=3 app_C: success=True reason=None cost=30 steps=13
+  [7/10] p=0.2 seed=4 app_C: success=True reason=None cost=40 steps=18
+[progress] 8/10 episodes | 6.5 ep/min | 92.0 calls/min | infra_failed=0 | elapsed=1.2 min
+  [8/10] p=0.2 seed=0 app_C: success=True reason=None cost=55 steps=25
+  [9/10] p=0.2 seed=4 led_C: success=False reason=budget_exhausted cost=61 steps=28
+[progress] 10/10 episodes | 4.4 ep/min | 75.8 calls/min | infra_failed=0 | elapsed=2.3 min
+  [10/10] p=0.2 seed=2 app_C: success=False reason=budget_exhausted cost=60 steps=30
+Run finished in 2.3 min. Output: D:\code\ClaudeCode\Probe1\results_1c\smoke. Still infra-failed: 0
+
+real	2m15.975s
+user	0m0.015s
+sys	0m0.015s

@@ -1,0 +1,41 @@
+{
+  "git_hash": "d1f32893c6f8f6a047073b92f2eaafe99008c7db",
+  "branch": "probe1c",
+  "frozen_base": "probe1-final",
+  "model": "minimax-code-global/MiniMax-M3.1-Flash",
+  "temperature": 0,
+  "arms": [
+    "led_C",
+    "app_C"
+  ],
+  "disturbance": [
+    0.2
+  ],
+  "seed_blocks": [
+    [
+      4000,
+      4049
+    ],
+    [
+      4050,
+      4099
+    ],
+    [
+      4100,
+      4149
+    ],
+    [
+      4150,
+      4199
+    ],
+    [
+      4200,
+      4249
+    ],
+    [
+      4250,
+      4299
+    ]
+  ],
+  "written_at": "2026-11-18T12:11:26.517617+00:00"
+}
