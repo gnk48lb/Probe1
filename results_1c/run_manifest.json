@@ -9,11 +9,11 @@
   "disturbance_levels": [
     0.2
   ],
-  "seed_start": 4350,
-  "seeds": 400,
+  "seed_start": 4550,
+  "seeds": 600,
   "seed_range": [
     4000,
-    4399
+    4599
   ],
   "model": "minimax-code-global/MiniMax-M3.1-Flash",
   "temperature": 0,

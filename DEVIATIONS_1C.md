@@ -7,6 +7,12 @@ away.
 **Status at `prereg-1c`:** no deviations.  The preregistration, the lock and the
 smoke test were finished before any seed >= 4000 was run.
 
+**Status at the end of Stage 2:** still no deviations.  Stage 1 (seeds 4000-4299)
+was `INCONCLUSIVE`, which triggered the one allowed extension (seeds
+4300-4599); the final verdict over 600 seeds is also `INCONCLUSIVE`, so Stage 3
+was not triggered.  `analyze_1c.py` and `age_gate_reference.py` were not
+modified after `prereg_1c.lock` was written, and the lock still verifies.
+
 | # | phase | planned | done | why | noticed |
 |---|---|---|---|---|---|
 | — | — | — | — | — | — |

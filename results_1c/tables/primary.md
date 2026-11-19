@@ -2,10 +2,10 @@
 |---|---|
 | arms | led_C - app_C |
 | disturbance | p = 0.2 |
-| seeds used | 4000..4299 (300) |
+| seeds used | 4000..4599 (600) |
 | seeds dropped (an arm missing) | 0 |
-| effect (pp) | +2.7 |
-| 95% CI | [-3.7, +9.0] |
+| effect (pp) | +3.3 |
+| 95% CI | [-1.2, +8.0] |
 | verdict | INCONCLUSIVE |
 | bootstrap | 10000 resamples, RNG seed 20261119 |
 | delta | 5.0 pp |
