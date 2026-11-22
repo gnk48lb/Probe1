@@ -10,7 +10,11 @@ analysis and its tests, and the smoke test were all finished before any seed
 
 | # | phase | planned | done | why | noticed |
 |---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| 1 | Phase 5, after Stage 1 | `analyze_1d.py` writes the scripted reference lines, including the `age_gate` policy that `PREREG_1D.md` section 3.6 asks for | `analyze_1d.py` writes only the four scripted policies; the `age_gate` line is computed by a separate, unlocked script (`src/dynhouse/supplement_1d.py`) and written to `results_1d/tables/age_gate.md` | the analysis is locked by `prereg_1d.lock` and must stay byte-identical; editing it after the data would break the lock and look like post-hoc tuning | while writing the report, after the verdict was known |
+| 2 | Phase 5, after Stage 1 | the failure-ledger table labels its rows unambiguously | the values are correct but two labels slip: the third row reads "-dS - dF" while carrying the sum (-dS) + (-dF), and the report line pairs the signs loosely | same reason: the locked analysis is not edited; the identity itself holds with a residual of 0.0000 pp, and the report states the terms with the right signs | while writing the report, after the verdict was known |
+
+Neither entry touches the data, the estimator, the bootstrap, the verdict rule or any
+number: the verdict is INCONCLUSIVE either way.
 
 ## Notes on development-time activity (before the preregistration)
 
