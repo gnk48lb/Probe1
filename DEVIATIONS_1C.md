@@ -15,7 +15,7 @@ modified after `prereg_1c.lock` was written, and the lock still verifies.
 
 | # | phase | planned | done | why | noticed |
 |---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| 1 | Phase 3, before any seed >= 4000 | one `prereg-1c` tag, written once | the tag was created and then re-created on a corrected commit | the first commit of the branch had briefly staged Probe 1b's raw transcripts (193 MB), because the `.gitignore` of `probe1-final` does not carry the 1b entries; the commit was undone, the ignore rules were added, and the tag was re-created on the corrected commit | while committing the preregistration, before any seed >= 4000 was run |
 
 ## Notes on development-time activity (before the preregistration)
 
