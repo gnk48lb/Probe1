@@ -1,0 +1,67 @@
+{
+  "git_hash": "3109d74ddaeea199233944300a2a680a9e401b5e",
+  "branch": "probe1d",
+  "frozen_base": "probe1-final",
+  "prereg_tag": "prereg-1d",
+  "model": "minimax-code-global/MiniMax-M3.1-Flash",
+  "temperature": 0,
+  "arms": [
+    "led_C",
+    "app_C"
+  ],
+  "disturbance": [
+    0.2
+  ],
+  "seed_blocks": [
+    [
+      5000,
+      5049
+    ],
+    [
+      5050,
+      5099
+    ],
+    [
+      5100,
+      5149
+    ],
+    [
+      5150,
+      5199
+    ],
+    [
+      5200,
+      5249
+    ],
+    [
+      5250,
+      5299
+    ],
+    [
+      5300,
+      5349
+    ],
+    [
+      5350,
+      5399
+    ],
+    [
+      5400,
+      5449
+    ],
+    [
+      5450,
+      5499
+    ],
+    [
+      5500,
+      5549
+    ],
+    [
+      5550,
+      5599
+    ]
+  ],
+  "note": "the commit the run is launched from; the only commit after it adds this file",
+  "written_at": "2026-11-22T00:19:58.110732+00:00"
+}
