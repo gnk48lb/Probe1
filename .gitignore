@@ -12,3 +12,7 @@ results_1c/smoke/
 results_1b/**/traces.jsonl
 results_1b/**/raw.jsonl
 results_1b/smoke/
+results_1d/**/traces.jsonl
+results_1d/**/raw.jsonl
+results_1d/**/requests.jsonl
+results_1d/smoke/
