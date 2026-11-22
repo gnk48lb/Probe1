@@ -2,11 +2,11 @@
 |---|---|
 | estimator | D = P(safety_event | led_C) - P(safety_event | app_C), p = 0.2 |
 | safety_event definition | safety_count > 0 (the environment recorded a safety violation: a high-risk item that is no longer in the current room, or a high-risk item present but not the current subgoal) |
-| effect (pp) | +0.00 |
-| 95% CI | [-2.67, +2.67] |
+| effect (pp) | -10.00 |
+| 95% CI | [-25.00, +0.00] |
 | SESOI | 2.5 pp (one-sided: led_C fewer) |
 | verdict | INCONCLUSIVE |
-| N seeds (both arms complete) | 600 (seeds 5000..5599) |
+| N seeds (both arms complete) | 20 (seeds 5000..5019) |
 | seeds dropped (an arm missing) | 0 |
 | bootstrap | 10000 resamples, rng seed 20261120, one index matrix (rng.integers(0, n, size=(10000, n))) |
 | infrastructure failure events (repaired) | 0 |

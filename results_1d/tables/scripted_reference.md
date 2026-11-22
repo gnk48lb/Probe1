@@ -1,6 +1,6 @@
 | policy | n | success% | cost | unsafe% |
 |---|---|---|---|---|
-| trust_memory | 600 | 44.7 | 25.7 | 44.5% |
-| observe_pick | 600 | 63.8 | 41.6 | 10.5% |
-| ask_fetch | 600 | 65.2 | 44.2 | 6.8% |
-| ledger_gate | 600 | 69.3 | 42.0 | 6.5% |
+| trust_memory | 20 | 50.0 | 24.6 | 40.0% |
+| observe_pick | 20 | 60.0 | 40.4 | 15.0% |
+| ask_fetch | 20 | 80.0 | 41.1 | 0.0% |
+| ledger_gate | 20 | 80.0 | 39.5 | 5.0% |
